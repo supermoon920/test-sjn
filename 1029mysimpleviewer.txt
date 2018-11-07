@@ -1,0 +1,83 @@
+#include "stdafx.h"
+#include <iostream>
+#include <OpenNI.h>
+#include "Viewer.h"
+ 
+int main(int argc, char** argv)
+{
+    openni::Status rc = openni::STATUS_OK;
+ 
+    openni::Device device;
+    openni::VideoStream depth, color;
+    const char* deviceURI = openni::ANY_DEVICE;
+ 
+    // 1. 初始化OpenNI.
+    rc = openni::OpenNI::initialize();
+ 
+ 
+    // 2. 打开Kinect设备,这里deviceURI设置为openni::ANY_DEVICE
+    /*
+    * (1) 如果有多个装置,xiangyao指定要用哪个装置的话,需要先通过
+    * static void openni::OpenNI::enumerateDevices(Array<DeviceInfo>* deviceInfoList) 
+    * 这个函数获取可使用的装置列表,在通过指定的URI的方式,来指定要开启的装置;
+    * (2) 如果没有要特别指定的话或者只有一个装置的话,则是用openni::ANY_DEVICE作为URI,让系统
+    * 决定要使用的装置.
+    */
+    rc = device.open(deviceURI);
+     
+    // 3. openni::SENSOR_DEPTH表示创建深度数据流;
+    /************************************************************************/
+    /* 这里的create()函数的第二个参数是一个枚举类型enum openni::SensorType,主要有
+     * 三个Enumerator：SENSOR_IR, SENSOR_COLOR和SENSOR_DEPTH.通过字面也知道他们是
+     * 分别要获取哪个类型的数据流信息。
+    */
+    /************************************************************************/
+    rc = depth.create(device, openni::SENSOR_DEPTH);
+    if (rc == openni::STATUS_OK)
+    {
+        // 4. 透过start和stop函数来控制数据流的读取。
+        rc = depth.start();
+        if (rc != openni::STATUS_OK)
+        {
+            printf("SimpleViewer: Couldn't start depth stream:\n%s\n", openni::OpenNI::getExtendedError());
+            depth.destroy();
+        }
+    }
+    else
+    {
+        printf("SimpleViewer: Couldn't find depth stream:\n%s\n", openni::OpenNI::getExtendedError());
+    }
+    // 同样的利用openni::SENSOR_COLOR读取颜色图像数据流。
+    rc = color.create(device, openni::SENSOR_COLOR);
+    if (rc == openni::STATUS_OK)
+    {
+        rc = color.start();
+        if (rc != openni::STATUS_OK)
+        {
+            printf("SimpleViewer: Couldn't start color stream:\n%s\n", openni::OpenNI::getExtendedError());
+            color.destroy();
+        }
+    }
+    else
+    {
+        printf("SimpleViewer: Couldn't find color stream:\n%s\n", openni::OpenNI::getExtendedError());
+    }
+ 
+    if (!depth.isValid() || !color.isValid())
+    {
+        printf("SimpleViewer: No valid streams. Exiting\n");
+        openni::OpenNI::shutdown();
+        return 2;
+    }
+ 
+    // 5. 根据获取到的深度数据流和彩色图像数据流，创建SampleViewer对象，显示深度图像。
+    SampleViewer sampleViewer("Simple Viewer", device, depth, color);
+ 
+    rc = sampleViewer.init(argc, argv);
+    if (rc != openni::STATUS_OK)
+    {
+        openni::OpenNI::shutdown();
+        return 3;
+    }
+    sampleViewer.run();
+}
